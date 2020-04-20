@@ -16,7 +16,7 @@ on:
     branches:
       - master
     paths:
-      - 'config/lean/*.config'
+      - '.config'
 #  schedule:
 #    - cron: 0 8 * * 5
 #  watch:
@@ -25,13 +25,13 @@ on:
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
-  CONFIG_FILE: config/lean/*.config
-  DIY_SH: scripts/lean-openwrt.sh
+  CONFIG_FILE: .config
+  DIY_SH: diy.sh
   SSH_ACTIONS: false
-  UPLOAD_BIN_DIR: true
+  UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: true
-  UPLOAD_WETRANSFER: true
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_WETRANSFER: false
   TZ: Asia/Shanghai
 
 jobs:
@@ -43,7 +43,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
-    - name: Initialization Environment
+    - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -55,29 +55,27 @@ jobs:
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         curl -fsSL https://raw.githubusercontent.com/P3TERX/dotfiles/master/.bashrc >> ~/.bashrc
-    - name: Clone Source Code
+    - name: Clone source code
       run: git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
 
-    - name: Update Feeds
-      run: |
-        cd openwrt 
-        echo "src-git lienol https://github.com/SuLingGG/openwrt-package" >> feeds.conf.default
-        ./scripts/feeds update -a
-    - name: Install Feeds
+    - name: Update feeds
+      run: cd openwrt && ./scripts/feeds update -a
+
+    - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Load Custom Configuration
+    - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_SH
         cd openwrt
         ../$DIY_SH
-    - name: SSH Connection To Actions
+    - name: SSH connection to Actions
       uses: P3TERX/debugger-action@master
       if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
 
-    - name: Download Package
+    - name: Download package
       id: package
       run: |
         cd openwrt
@@ -85,73 +83,31 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-    - name: Compile The Firmware
+    - name: Compile the firmware
       id: compile
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 V=s
+        make -j$(nproc) || make -j2 V=s
         echo "::set-output name=status::success"
-    - name: Set Environment Variable
-      if: steps.compile.outputs.status == 'success'
-      run: |
-        cd openwrt/bin/targets/*
-        TARGET=$(basename `pwd`)
-        echo "::set-env name=TARGET::$TARGET"
-        cd *
-        SUBTARGET=$(basename `pwd`)
-        echo "::set-env name=SUBTARGET::$SUBTARGET"
-        echo "::set-env name=FIRMWARE::$PWD"
-        
-    - name: Set Packages-Server
-      if: steps.compile.outputs.status == 'success'
-      run: |
-        mkdir -p server/web/snapshots/targets/$TARGET/$SUBTARGET
-        cp -r openwrt/bin/packages server/web/snapshots
-        cp -r openwrt/bin/targets/$TARGET/$SUBTARGET/packages server/web/snapshots/targets/$TARGET/$SUBTARGET
-        mkdir -p openwrt/bin/targets/$TARGET/$SUBTARGET/pre-packages-server
-        cp -r server openwrt/bin/targets/$TARGET/$SUBTARGET/pre-packages-server
-        cd openwrt/bin/targets/$TARGET/$SUBTARGET
-        zip -q -r packages-server.zip pre-packages-server/server
-        
-    - name: Upload Config
-      uses: actions/upload-artifact@master
-      if: steps.compile.outputs.status == 'success'
-      with:
-        name: config.seed
-        path: openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/config.seed
-        
-    - name: Upload Packages-Server
-      uses: actions/upload-artifact@master
-      if: steps.compile.outputs.status == 'success'
-      with:
-        name: packages-server
-        path: openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/pre-packages-server
-        
-    - name: Upload Images Sha256sums
-      uses: actions/upload-artifact@master
-      if: steps.compile.outputs.status == 'success'
-      with:
-        name: sha256sums
-        path: openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/sha256sums
-        
-    - name: Upload Bin Directory
+    - name: Upload bin directory
       uses: actions/upload-artifact@master
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt-Bin
+        name: OpenWrt_bin
         path: openwrt/bin
 
-    - name: Organize Files
+    - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/$TARGET/$SUBTARGET
+        cd openwrt/bin/targets/*/*
         rm -rf packages
+        echo "::set-env name=FIRMWARE::$PWD"
         echo "::set-output name=status::success"
-    - name: Upload Firmware Directory
+    - name: Upload firmware directory
       uses: actions/upload-artifact@master
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt-Firmware
+        name: OpenWrt_firmware
         path: ${{ env.FIRMWARE }}
