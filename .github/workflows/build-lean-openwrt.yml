@@ -59,7 +59,7 @@ jobs:
     - name: Update feeds
       run: |
         cd openwrt
-        sed -i 11s/#src-git/src-git/g' feeds.conf.default 
+        sed -i '11s/#src-git/src-git/g' feeds.conf.default 
         echo "src-git lienol https://github.com/SuLingGG/openwrt-package" >> feeds.conf.default
         ./scripts/feeds update -a
 
