@@ -12,13 +12,13 @@
 mkdir package/diy
 pushd package/diy
 # Add ServerChan
-git clone --depth=1 https://github.com/tty228/luci-app-serverchan
+#git clone --depth=1 https://github.com/tty228/luci-app-serverchan
 
 # Add OpenClash
 git clone --depth=1 -b master https://github.com/vernesong/OpenClash
 
 # Add smartdns
-svn co https://github.com/pymumu/smartdns/trunk/package/openwrt smartdns
-svn co https://github.com/project-openwrt/openwrt/trunk/package/ntlf9t/luci-app-smartdns luci-app-smartdn
+#svn co https://github.com/pymumu/smartdns/trunk/package/openwrt smartdns
+#svn co https://github.com/project-openwrt/openwrt/trunk/package/ntlf9t/luci-app-smartdns luci-app-smartdn
 
 popd
