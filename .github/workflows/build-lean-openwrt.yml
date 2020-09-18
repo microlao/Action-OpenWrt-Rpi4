@@ -16,7 +16,7 @@ on:
     types: published
   push:
     branches:
-      - main
+      - master
     paths:
       - '.config'
 #  schedule:
@@ -29,7 +29,7 @@ env:
   REPO_BRANCH: master
   CONFIG_FILE: .config
   DIY_SH: diy.sh
-  SSH_ACTIONS: false
+  #SSH_ACTIONS: false
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: false
@@ -76,10 +76,6 @@ jobs:
         cd openwrt
         ../$DIY_SH
         
-    - name: SSH connection to Actions
-      uses: P3TERX/debugger-action@master
-      if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
-
     - name: Download package
       id: package
       run: |
